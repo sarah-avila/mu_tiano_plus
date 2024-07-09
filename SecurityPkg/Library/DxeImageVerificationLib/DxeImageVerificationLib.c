@@ -1461,31 +1461,33 @@ Done:
 
 **/
 BOOLEAN
-IsAllowedByDb (
-  IN UINT8  *AuthData,
+IsAllowedByDb(
+  IN UINT8* AuthData,
   IN UINTN  AuthDataSize
-  )
+)
 {
   EFI_STATUS          Status;
   BOOLEAN             VerifyStatus;
   BOOLEAN             IsFound;
-  EFI_SIGNATURE_LIST  *CertList;
-  EFI_SIGNATURE_DATA  *CertData;
+  EFI_SIGNATURE_LIST* CertList;
+  EFI_SIGNATURE_DATA* CertData;
   UINTN               DataSize;
-  UINT8               *Data;
-  UINT8               *RootCert;
+  UINT8* Data;
+  UINT8* RootCert;
   UINTN               RootCertSize;
   UINTN               Index;
   UINTN               CertCount;
   UINTN               DbxDataSize;
-  UINT8               *DbxData;
+  UINT8* DbxData;
   EFI_TIME            RevocationTime;
 
-  Data         = NULL;
-  CertList     = NULL;
-  CertData     = NULL;
-  RootCert     = NULL;
-  DbxData      = NULL;
+  DEBUG((DEBUG_ERROR, "[%a] Entry\n", __FUNCTION__));
+
+  Data = NULL;
+  CertList = NULL;
+  CertData = NULL;
+  RootCert = NULL;
+  DbxData = NULL;
   RootCertSize = 0;
   VerifyStatus = FALSE;
 
@@ -1494,19 +1496,19 @@ IsAllowedByDb (
   // data, return not-allowed-by-db (FALSE).
   //
   DataSize = 0;
-  Status   = gRT->GetVariable (EFI_IMAGE_SECURITY_DATABASE, &gEfiImageSecurityDatabaseGuid, NULL, &DataSize, NULL);
-  ASSERT (EFI_ERROR (Status));
+  Status = gRT->GetVariable(EFI_IMAGE_SECURITY_DATABASE, &gEfiImageSecurityDatabaseGuid, NULL, &DataSize, NULL);
+  ASSERT(EFI_ERROR(Status));
   if (Status != EFI_BUFFER_TOO_SMALL) {
     return VerifyStatus;
   }
 
-  Data = (UINT8 *)AllocateZeroPool (DataSize);
+  Data = (UINT8*)AllocateZeroPool(DataSize);
   if (Data == NULL) {
     return VerifyStatus;
   }
 
-  Status = gRT->GetVariable (EFI_IMAGE_SECURITY_DATABASE, &gEfiImageSecurityDatabaseGuid, NULL, &DataSize, (VOID *)Data);
-  if (EFI_ERROR (Status)) {
+  Status = gRT->GetVariable(EFI_IMAGE_SECURITY_DATABASE, &gEfiImageSecurityDatabaseGuid, NULL, &DataSize, (VOID*)Data);
+  if (EFI_ERROR(Status)) {
     goto Done;
   }
 
@@ -1516,8 +1518,8 @@ IsAllowedByDb (
   // not-allowed-by-db (FALSE) to avoid bypass.
   //
   DbxDataSize = 0;
-  Status      = gRT->GetVariable (EFI_IMAGE_SECURITY_DATABASE1, &gEfiImageSecurityDatabaseGuid, NULL, &DbxDataSize, NULL);
-  ASSERT (EFI_ERROR (Status));
+  Status = gRT->GetVariable(EFI_IMAGE_SECURITY_DATABASE1, &gEfiImageSecurityDatabaseGuid, NULL, &DbxDataSize, NULL);
+  ASSERT(EFI_ERROR(Status));
   if (Status != EFI_BUFFER_TOO_SMALL) {
     if (Status != EFI_NOT_FOUND) {
       goto Done;
@@ -1526,17 +1528,18 @@ IsAllowedByDb (
     //
     // 'dbx' does not exist. Continue to check 'db'.
     //
-  } else {
+  }
+  else {
     //
     // 'dbx' exists. Get its content.
     //
-    DbxData = (UINT8 *)AllocateZeroPool (DbxDataSize);
+    DbxData = (UINT8*)AllocateZeroPool(DbxDataSize);
     if (DbxData == NULL) {
       goto Done;
     }
 
-    Status = gRT->GetVariable (EFI_IMAGE_SECURITY_DATABASE1, &gEfiImageSecurityDatabaseGuid, NULL, &DbxDataSize, (VOID *)DbxData);
-    if (EFI_ERROR (Status)) {
+    Status = gRT->GetVariable(EFI_IMAGE_SECURITY_DATABASE1, &gEfiImageSecurityDatabaseGuid, NULL, &DbxDataSize, (VOID*)DbxData);
+    if (EFI_ERROR(Status)) {
       goto Done;
     }
   }
@@ -1544,33 +1547,37 @@ IsAllowedByDb (
   //
   // Find X509 certificate in Signature List to verify the signature in pkcs7 signed data.
   //
-  CertList = (EFI_SIGNATURE_LIST *)Data;
+  CertList = (EFI_SIGNATURE_LIST*)Data;
   // MU_CHANGE [START] - CodeQL change
   while ((DataSize > 0) && (DataSize >= (UINTN)CertList->SignatureListSize)) {
     // MU_CHANGE [END] - CodeQL change
-    if (CompareGuid (&CertList->SignatureType, &gEfiCertX509Guid)) {
-      CertData  = (EFI_SIGNATURE_DATA *)((UINT8 *)CertList + sizeof (EFI_SIGNATURE_LIST) + CertList->SignatureHeaderSize);
-      CertCount = (CertList->SignatureListSize - sizeof (EFI_SIGNATURE_LIST) - CertList->SignatureHeaderSize) / CertList->SignatureSize;
+    if (CompareGuid(&CertList->SignatureType, &gEfiCertX509Guid)) {
+      CertData = (EFI_SIGNATURE_DATA*)((UINT8*)CertList + sizeof(EFI_SIGNATURE_LIST) + CertList->SignatureHeaderSize);
+      CertCount = (CertList->SignatureListSize - sizeof(EFI_SIGNATURE_LIST) - CertList->SignatureHeaderSize) / CertList->SignatureSize;
+
+      DEBUG((DEBUG_ERROR, "[%a] CertCount = %d\n", __FUNCTION__, CertCount));
 
       for (Index = 0; Index < CertCount; Index++) {
         //
         // Iterate each Signature Data Node within this CertList for verify.
         //
-        RootCert     = CertData->SignatureData;
-        RootCertSize = CertList->SignatureSize - sizeof (EFI_GUID);
+        RootCert = CertData->SignatureData;
+        RootCertSize = CertList->SignatureSize - sizeof(EFI_GUID);
 
         //
         // Call AuthenticodeVerify library to Verify Authenticode struct.
         //
-        VerifyStatus = AuthenticodeVerify (
-                         AuthData,
-                         AuthDataSize,
-                         RootCert,
-                         RootCertSize,
-                         mImageDigest,
-                         mImageDigestSize
-                         );
+        VerifyStatus = AuthenticodeVerify(
+          AuthData,
+          AuthDataSize,
+          RootCert,
+          RootCertSize,
+          mImageDigest,
+          mImageDigestSize
+        );
         if (VerifyStatus) {
+
+          DEBUG((DEBUG_ERROR, "[%a] Image signature found in db\n", __FUNCTION__));
           //
           // The image is signed and its signature is found in 'db'.
           //
@@ -1578,21 +1585,24 @@ IsAllowedByDb (
             //
             // Here We still need to check if this RootCert's Hash is revoked
             //
-            Status = IsCertHashFoundInDbx (RootCert, RootCertSize, (EFI_SIGNATURE_LIST *)DbxData, DbxDataSize, &RevocationTime, &IsFound);
-            if (EFI_ERROR (Status)) {
+            Status = IsCertHashFoundInDbx(RootCert, RootCertSize, (EFI_SIGNATURE_LIST*)DbxData, DbxDataSize, &RevocationTime, &IsFound);
+            if (EFI_ERROR(Status)) {
+              DEBUG((DEBUG_ERROR, "[%a] Error searching in dbx\n", __FUNCTION__));
               //
               // Error in searching dbx. Consider it as 'found'. RevocationTime might
               // not be valid in such situation.
               //
               VerifyStatus = FALSE;
-            } else if (IsFound) {
+            }
+            else if (IsFound) {
               //
               // Check the timestamp signature and signing time to determine if the RootCert can be trusted.
               //
-              VerifyStatus = PassTimestampCheck (AuthData, AuthDataSize, &RevocationTime);
+              VerifyStatus = PassTimestampCheck(AuthData, AuthDataSize, &RevocationTime);
               if (!VerifyStatus) {
-                DEBUG ((DEBUG_ERROR, "DxeImageVerificationLib: Image is signed and signature is accepted by DB, but its root cert failed the timestamp check.\n"));
+                DEBUG((DEBUG_ERROR, "DxeImageVerificationLib: Image is signed and signature is accepted by DB, but its root cert failed the timestamp check.\n"));
               }
+              DEBUG((DEBUG_ERROR, "[%a] Signatue found in dbx (%d)\n", __FUNCTION__, VerifyStatus));
             }
           }
 
@@ -1605,26 +1615,27 @@ IsAllowedByDb (
           goto Done;
         }
 
-        CertData = (EFI_SIGNATURE_DATA *)((UINT8 *)CertData + CertList->SignatureSize);
+        CertData = (EFI_SIGNATURE_DATA*)((UINT8*)CertData + CertList->SignatureSize);
       }
     }
 
     DataSize -= CertList->SignatureListSize;
-    CertList  = (EFI_SIGNATURE_LIST *)((UINT8 *)CertList + CertList->SignatureListSize);
+    CertList = (EFI_SIGNATURE_LIST*)((UINT8*)CertList + CertList->SignatureListSize);
   }
 
 Done:
+  DEBUG((DEBUG_ERROR, "[%a] Exit (%d)\n", __FUNCTION__, VerifyStatus));
 
   if (VerifyStatus) {
-    SecureBootHook (EFI_IMAGE_SECURITY_DATABASE, &gEfiImageSecurityDatabaseGuid, CertList->SignatureSize, CertData);
+    SecureBootHook(EFI_IMAGE_SECURITY_DATABASE, &gEfiImageSecurityDatabaseGuid, CertList->SignatureSize, CertData);
   }
 
   if (Data != NULL) {
-    FreePool (Data);
+    FreePool(Data);
   }
 
   if (DbxData != NULL) {
-    FreePool (DbxData);
+    FreePool(DbxData);
   }
 
   return VerifyStatus;
