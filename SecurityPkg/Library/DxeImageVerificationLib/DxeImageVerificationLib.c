@@ -1040,6 +1040,8 @@ IsSignatureFoundInDatabase (
     CertCount = (CertList->SignatureListSize - sizeof (EFI_SIGNATURE_LIST) - CertList->SignatureHeaderSize) / CertList->SignatureSize;
     DEBUG((DEBUG_ERROR, "[%a] CertCount = %d!\n", __FUNCTION__, CertCount));
     Cert      = (EFI_SIGNATURE_DATA *)((UINT8 *)CertList + sizeof (EFI_SIGNATURE_LIST) + CertList->SignatureHeaderSize);
+    DEBUG((DEBUG_ERROR, "[%a] Signature Size = %d %d!\n", __FUNCTION__, CertList->SignatureSize, (sizeof(EFI_SIGNATURE_DATA) - 1 + SignatureSize)));
+    DEBUG((DEBUG_ERROR, "[%a] Signature Type = %g %g!\n", __FUNCTION__, &CertList->SignatureType, CertType));
     if ((CertList->SignatureSize == sizeof (EFI_SIGNATURE_DATA) - 1 + SignatureSize) && (CompareGuid (&CertList->SignatureType, CertType))) {
       for (Index = 0; Index < CertCount; Index++) {
         if (CompareMem (Cert->SignatureData, Signature, SignatureSize) == 0) {
@@ -1078,7 +1080,7 @@ Done:
     FreePool (Data);
   }
 
-  DEBUG((DEBUG_ERROR, "[%a] Exit - %s variable, IsFound = %d\n", __FUNCTION__, VariableName, IsFound));
+  DEBUG((DEBUG_ERROR, "[%a] Exit - %s variable, IsFound = %d\n", __FUNCTION__, VariableName, *IsFound));
 
   return Status;
 }
