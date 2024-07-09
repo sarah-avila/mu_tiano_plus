@@ -997,6 +997,8 @@ IsSignatureFoundInDatabase (
   UINTN               Index;
   UINTN               CertCount;
 
+  DEBUG((DEBUG_ERROR, "[%a] Enter - %s variable.\n", __FUNCTION__, VariableName));
+
   //
   // Read signature database variable.
   //
@@ -1005,6 +1007,7 @@ IsSignatureFoundInDatabase (
   DataSize = 0;
   Status   = gRT->GetVariable (VariableName, &gEfiImageSecurityDatabaseGuid, NULL, &DataSize, NULL);
   if (Status != EFI_BUFFER_TOO_SMALL) {
+    DEBUG((DEBUG_ERROR, "[%a] %s variable is not found (%r)!\n", __FUNCTION__, VariableName, Status));
     if (Status == EFI_NOT_FOUND) {
       //
       // No database, no need to search.
@@ -1017,11 +1020,13 @@ IsSignatureFoundInDatabase (
 
   Data = (UINT8 *)AllocateZeroPool (DataSize);
   if (Data == NULL) {
+    DEBUG((DEBUG_ERROR, "[%a] %s AllocateZeroPool failed!\n", __FUNCTION__, VariableName));
     return EFI_OUT_OF_RESOURCES;
   }
 
   Status = gRT->GetVariable (VariableName, &gEfiImageSecurityDatabaseGuid, NULL, &DataSize, Data);
   if (EFI_ERROR (Status)) {
+    DEBUG((DEBUG_ERROR, "[%a] %s second GetVariable failed (%r)!\n", __FUNCTION__, VariableName, Status));
     goto Done;
   }
 
@@ -1033,6 +1038,7 @@ IsSignatureFoundInDatabase (
   while ((DataSize > 0) && (DataSize >= (UINTN)CertList->SignatureListSize)) {
     // MU_CHANGE [END] - CodeQL change
     CertCount = (CertList->SignatureListSize - sizeof (EFI_SIGNATURE_LIST) - CertList->SignatureHeaderSize) / CertList->SignatureSize;
+    DEBUG((DEBUG_ERROR, "[%a] CertCount = %d!\n", __FUNCTION__, CertCount));
     Cert      = (EFI_SIGNATURE_DATA *)((UINT8 *)CertList + sizeof (EFI_SIGNATURE_LIST) + CertList->SignatureHeaderSize);
     if ((CertList->SignatureSize == sizeof (EFI_SIGNATURE_DATA) - 1 + SignatureSize) && (CompareGuid (&CertList->SignatureType, CertType))) {
       for (Index = 0; Index < CertCount; Index++) {
@@ -1049,6 +1055,10 @@ IsSignatureFoundInDatabase (
           }
 
           break;
+        }
+        else
+        {
+          DEBUG((DEBUG_ERROR, "[%a] Signature didn't match!\n", __FUNCTION__));
         }
 
         Cert = (EFI_SIGNATURE_DATA *)((UINT8 *)Cert + CertList->SignatureSize);
@@ -1067,6 +1077,8 @@ Done:
   if (Data != NULL) {
     FreePool (Data);
   }
+
+  DEBUG((DEBUG_ERROR, "[%a] Exit - %s variable, IsFound = %d\n", __FUNCTION__, VariableName, IsFound));
 
   return Status;
 }
@@ -1350,7 +1362,7 @@ IsForbiddenByDbx (
                         mImageDigestSize
                         );
         if (IsForbidden) {
-          DEBUG ((DEBUG_INFO, "DxeImageVerificationLib: Image is signed but signature is forbidden by DBX.\n"));
+          DEBUG ((DEBUG_ERROR, "DxeImageVerificationLib: Image is signed but signature is forbidden by DBX.\n"));
           goto Done;
         }
 
@@ -1417,7 +1429,7 @@ IsForbiddenByDbx (
         continue;
       } else {
         IsForbidden = TRUE;
-        DEBUG ((DEBUG_INFO, "DxeImageVerificationLib: Image is signed but signature failed the timestamp check.\n"));
+        DEBUG ((DEBUG_ERROR, "DxeImageVerificationLib: Image is signed but signature failed the timestamp check.\n"));
         goto Done;
       }
     }
@@ -1577,7 +1589,7 @@ IsAllowedByDb (
               //
               VerifyStatus = PassTimestampCheck (AuthData, AuthDataSize, &RevocationTime);
               if (!VerifyStatus) {
-                DEBUG ((DEBUG_INFO, "DxeImageVerificationLib: Image is signed and signature is accepted by DB, but its root cert failed the timestamp check.\n"));
+                DEBUG ((DEBUG_ERROR, "DxeImageVerificationLib: Image is signed and signature is accepted by DB, but its root cert failed the timestamp check.\n"));
               }
             }
           }
@@ -1739,10 +1751,12 @@ DxeImageVerificationHandler (
   // If policy is always/never execute, return directly.
   //
   if (Policy == ALWAYS_EXECUTE) {
+    DEBUG((DEBUG_ERROR, "DxeImageVerificationLib: Policy is ALWAYS execute. Returning\n"));
     return EFI_SUCCESS;
   }
 
   if (Policy == NEVER_EXECUTE) {
+    DEBUG((DEBUG_ERROR, "DxeImageVerificationLib: Policy is NEVER execute. Returning\n"));
     return EFI_ACCESS_DENIED;
   }
 
@@ -1752,6 +1766,7 @@ DxeImageVerificationHandler (
   //
   ASSERT (Policy != QUERY_USER_ON_SECURITY_VIOLATION && Policy != ALLOW_EXECUTE_ON_SECURITY_VIOLATION);
   if ((Policy == QUERY_USER_ON_SECURITY_VIOLATION) || (Policy == ALLOW_EXECUTE_ON_SECURITY_VIOLATION)) {
+    DEBUG((DEBUG_ERROR, "DxeImageVerificationLib: ERROR: Query on Security Violation or Allow Execute on Security Violation\n"));
     CpuDeadLoop ();
   }
 
@@ -1761,6 +1776,7 @@ DxeImageVerificationHandler (
   // Skip verification if SecureBoot variable doesn't exist.
   //
   if (VarStatus == EFI_NOT_FOUND) {
+    DEBUG((DEBUG_ERROR, "DxeImageVerificationLib: ERROR: SecureBoot variable is not found.\n"));
     return EFI_SUCCESS;
   }
 
@@ -1772,6 +1788,7 @@ DxeImageVerificationHandler (
                    EFI_VARIABLE_RUNTIME_ACCESS)) &&
       (SecureBoot == SECURE_BOOT_MODE_DISABLE))
   {
+    DEBUG((DEBUG_ERROR, "DxeImageVerificationLib: Skip verification if Secure boot is disabled but not AuditMode\n"));
     return EFI_SUCCESS;
   }
 
@@ -1779,6 +1796,7 @@ DxeImageVerificationHandler (
   // Read the Dos header.
   //
   if (FileBuffer == NULL) {
+    DEBUG((DEBUG_ERROR, "DxeImageVerificationLib: ERROR: File Access denied\n"));
     return EFI_ACCESS_DENIED;
   }
 
@@ -1797,7 +1815,7 @@ DxeImageVerificationHandler (
     //
     // The information can't be got from the invalid PeImage
     //
-    DEBUG ((DEBUG_INFO, "DxeImageVerificationLib: PeImage invalid. Cannot retrieve image information.\n"));
+    DEBUG ((DEBUG_ERROR, "DxeImageVerificationLib: PeImage invalid. Cannot retrieve image information.\n"));
     goto Failed;
   }
 
@@ -1820,7 +1838,7 @@ DxeImageVerificationHandler (
     //
     // It is not a valid Pe/Coff file.
     //
-    DEBUG ((DEBUG_INFO, "DxeImageVerificationLib: Not a valid PE/COFF image.\n"));
+    DEBUG ((DEBUG_ERROR, "DxeImageVerificationLib: Not a valid PE/COFF image.\n"));
     goto Failed;
   }
 
@@ -1851,7 +1869,7 @@ DxeImageVerificationHandler (
     // and not be reflected in the security data base "dbx".
     //
     if (!HashPeImage (HASHALG_SHA256)) {
-      DEBUG ((DEBUG_INFO, "DxeImageVerificationLib: Failed to hash this image using %s.\n", mHashTypeStr));
+      DEBUG ((DEBUG_ERROR, "DxeImageVerificationLib: Failed to hash this image using %s.\n", mHashTypeStr));
       goto Failed;
     }
 
@@ -1866,7 +1884,7 @@ DxeImageVerificationHandler (
       //
       // Image Hash is in forbidden database (DBX).
       //
-      DEBUG ((DEBUG_INFO, "DxeImageVerificationLib: Image is not signed and %s hash of image is forbidden by DBX.\n", mHashTypeStr));
+      DEBUG ((DEBUG_ERROR, "DxeImageVerificationLib: Image is not signed and %s hash of image is forbidden by DBX.\n", mHashTypeStr));
       goto Failed;
     }
 
@@ -1887,7 +1905,7 @@ DxeImageVerificationHandler (
     //
     // Image Hash is not found in both forbidden and allowed database.
     //
-    DEBUG ((DEBUG_INFO, "DxeImageVerificationLib: Image is not signed and %s hash of image is not found in DB/DBX.\n", mHashTypeStr));
+    DEBUG ((DEBUG_ERROR, "DxeImageVerificationLib: Image is not signed and %s hash of image is not found in DB/DBX.\n", mHashTypeStr));
     goto Failed;
   }
 
@@ -1987,7 +2005,7 @@ DxeImageVerificationHandler (
                  );
     if (EFI_ERROR (DbStatus) || IsFound) {
       Action = EFI_IMAGE_EXECUTION_AUTH_SIG_FOUND;
-      DEBUG ((DEBUG_INFO, "DxeImageVerificationLib: Image is signed but %s hash of image is found in DBX.\n", mHashTypeStr));
+      DEBUG ((DEBUG_ERROR, "DxeImageVerificationLib: Image is signed but %s hash of image is found in DBX.\n", mHashTypeStr));
       IsVerified = FALSE;
       break;
     }
@@ -2004,7 +2022,7 @@ DxeImageVerificationHandler (
         IsVerified = TRUE;
       } else {
         Action = EFI_IMAGE_EXECUTION_AUTH_SIG_NOT_FOUND;
-        DEBUG ((DEBUG_INFO, "DxeImageVerificationLib: Image is signed but signature is not allowed by DB and %s hash of image is not found in DB/DBX.\n", mHashTypeStr));
+        DEBUG ((DEBUG_ERROR, "DxeImageVerificationLib: Image is signed but signature is not allowed by DB and %s hash of image is not found in DB/DBX.\n", mHashTypeStr));
       }
     }
   }
@@ -2049,7 +2067,7 @@ Failed:
   // MU_CHANGE [BEGIN] - CodeQL change
   if (NameStr != NULL) {
     AddImageExeInfo (Action, NameStr, File, SignatureList, SignatureListSize);
-    DEBUG ((DEBUG_INFO, "The image doesn't pass verification: %s\n", NameStr));
+    DEBUG ((DEBUG_ERROR, "The image doesn't pass verification: %s\n", NameStr));
     FreePool (NameStr);
   }
 
@@ -2060,6 +2078,7 @@ Failed:
   }
 
   if (Policy == DEFER_EXECUTE_ON_SECURITY_VIOLATION) {
+    DEBUG((DEBUG_ERROR, "DxeImageVerificationLib: Policy is defer on Security Violation\n"));
     return EFI_SECURITY_VIOLATION;
   }
 
