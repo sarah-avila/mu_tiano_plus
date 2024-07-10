@@ -1513,8 +1513,10 @@ IsAllowedByDb(
   }
 
   // Dump database
+  /*
   DEBUG((DEBUG_ERROR, "DB database dump:\n"));
   DUMP_HEX(DEBUG_ERROR, 0, Data, DataSize, "");
+  */
 
   //
   // Fetch 'dbx' content. If 'dbx' doesn't exist, continue to check 'db'.
