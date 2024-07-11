@@ -41,6 +41,7 @@ DisablePKProtection (
   if (!EFI_ERROR (Status)) {
     DEBUG((DEBUG_ERROR, "%a() Disable Variable Policy\n", __func__));
     Status = VariablePolicy->DisableVariablePolicy ();
+    DEBUG((DEBUG_ERROR, "%a() DisableVariablePolicy Status = %r\n", __func__, Status));
     // EFI_ALREADY_STARTED means that everything is currently disabled.
     // This should be considered SUCCESS.
     if (Status == EFI_ALREADY_STARTED) {
