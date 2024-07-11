@@ -606,7 +606,7 @@ DeleteSecureBootVariables (
 {
   EFI_STATUS  Status, TempStatus;
 
-  DEBUG ((DEBUG_INFO, "%a - Attempting to delete the Secure Boot variables.\n", __func__));
+  DEBUG ((DEBUG_ERROR, "%a - Attempting to delete the Secure Boot variables.\n", __func__));
 
   //
   // Step 1: Notify that a PK update is coming shortly...

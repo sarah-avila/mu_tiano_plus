@@ -33,12 +33,13 @@ DisablePKProtection (
   EFI_STATUS                      Status = EFI_SUCCESS;
   EDKII_VARIABLE_POLICY_PROTOCOL  *VariablePolicy;
 
-  DEBUG ((DEBUG_INFO, "%a() Entry...\n", __func__));
+  DEBUG ((DEBUG_ERROR, "%a() Entry...\n", __func__));
 
   // IMPORTANT NOTE: This operation is sticky and leaves variable protections disabled.
   //                  The system *MUST* be reset after performing this operation.
   Status = gBS->LocateProtocol (&gEdkiiVariablePolicyProtocolGuid, NULL, (VOID **)&VariablePolicy);
   if (!EFI_ERROR (Status)) {
+    DEBUG((DEBUG_ERROR, "%a() Disable Variable Policy\n", __func__));
     Status = VariablePolicy->DisableVariablePolicy ();
     // EFI_ALREADY_STARTED means that everything is currently disabled.
     // This should be considered SUCCESS.
